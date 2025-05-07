@@ -1,207 +1,131 @@
-import datetime
-import json
+from datetime import datetime
+from collections import defaultdict
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from openpyxl.utils import get_column_letter
-from typing import Dict, List, Optional, Union, Tuple
-from dataclasses import dataclass, field, asdict
+import os
 
-
-@dataclass
 class Transaction:
-    """Represents a financial transaction."""
-    date: datetime.date
-    description: str
-    amount: float
-    category: str  # 'revenue' or 'expense'
-    subcategory: str  # specific type of revenue or expense
-    
-    def to_dict(self):
-        """Convert transaction to dictionary."""
-        result = asdict(self)
-        result['date'] = self.date.isoformat()
-        return result
-    
-    @classmethod
-    def from_dict(cls, data):
-        """Create transaction from dictionary."""
-        if isinstance(data['date'], str):
-            data['date'] = datetime.date.fromisoformat(data['date'])
-        return cls(**data)
-
+    def __init__(self, date, description, amount, category, transaction_type):
+        self.date = date if isinstance(date, datetime) else datetime.strptime(date, "%Y-%m-%d")
+        self.description = description
+        self.amount = float(amount)
+        self.category = category
+        self.transaction_type = transaction_type  # 'revenue', 'expense', 'cost_of_sales', or 'inventory'
 
 class IncomeStatement:
-    """Manages transactions and generates income statements."""
-    
-    # Standard categories for revenue and expenses
-    REVENUE_CATEGORIES = [
-        "sales", "service_revenue", "interest_income", "rental_income", 
-        "commission_income", "other_revenue"
-    ]
-    
-    EXPENSE_CATEGORIES = [
-        "cost_of_goods_sold", "salaries", "rent", "utilities", 
-        "office_supplies", "marketing", "insurance", "depreciation", 
-        "interest_expense", "taxes", "other_expenses"
-    ]
-    
-    def __init__(self):
-        self.transactions: List[Transaction] = []
+    def __init__(self, business_name, start_date, end_date, beginning_inventory=0):
+        self.business_name = business_name
+        self.start_date = start_date if isinstance(start_date, datetime) else datetime.strptime(start_date, "%Y-%m-%d")
+        self.end_date = end_date if isinstance(end_date, datetime) else datetime.strptime(end_date, "%Y-%m-%d")
+        self.transactions = []
+        self.beginning_inventory = float(beginning_inventory)
+        self.ending_inventory = None  # Will be set later
         
-    def add_transaction(self, 
-                      date: Union[str, datetime.date], 
-                      description: str, 
-                      amount: float, 
-                      category: str, 
-                      subcategory: str) -> Transaction:
-        """
-        Add a transaction to the income statement.
+    def set_ending_inventory(self, ending_inventory):
+        """Set the ending inventory amount"""
+        self.ending_inventory = float(ending_inventory)
         
-        Args:
-            date: Transaction date (string YYYY-MM-DD or datetime.date)
-            description: Description of the transaction
-            amount: Transaction amount (positive for revenue, negative for expenses)
-            category: Either 'revenue' or 'expense'
-            subcategory: Specific type of revenue or expense
-        """
-        if isinstance(date, str):
-            date = datetime.date.fromisoformat(date)
+    def add_transaction(self, transaction):
+        if self.start_date <= transaction.date <= self.end_date:
+            self.transactions.append(transaction)
             
-        # Validate category
-        if category.lower() not in ['revenue', 'expense']:
-            raise ValueError("Category must be either 'revenue' or 'expense'")
-        
-        # Create transaction
-        transaction = Transaction(
-            date=date,
-            description=description,
-            amount=amount,
-            category=category.lower(),
-            subcategory=subcategory.lower()
-        )
-        
-        self.transactions.append(transaction)
-        return transaction
-    
-    def categorize_transaction(self, transaction: Transaction, 
-                             new_category: str, new_subcategory: str) -> None:
-        """Update transaction categorization."""
-        if new_category.lower() not in ['revenue', 'expense']:
-            raise ValueError("Category must be either 'revenue' or 'expense'")
-            
-        transaction.category = new_category.lower()
-        transaction.subcategory = new_subcategory.lower()
-    
-    def get_transactions_by_period(self, start_date=None, end_date=None) -> List[Transaction]:
-        """Get transactions within the specified date range."""
-        if start_date and isinstance(start_date, str):
-            start_date = datetime.date.fromisoformat(start_date)
-        
-        if end_date and isinstance(end_date, str):
-            end_date = datetime.date.fromisoformat(end_date)
-        
-        filtered = self.transactions
-        
-        if start_date:
-            filtered = [t for t in filtered if t.date >= start_date]
-            
-        if end_date:
-            filtered = [t for t in filtered if t.date <= end_date]
-            
-        return filtered
-    
-    def generate_income_statement(self, start_date=None, end_date=None) -> Dict:
-        """
-        Generate income statement for the specified period.
-        
-        Returns:
-            Dictionary with revenue, expenses, and net income data
-        """
-        transactions = self.get_transactions_by_period(start_date, end_date)
-        
-        # Initialize results structure
-        result = {
-            "period": {
-                "start_date": start_date.isoformat() if start_date else "beginning",
-                "end_date": end_date.isoformat() if end_date else "present"
-            },
-            "revenue": {},
-            "expenses": {},
-            "summary": {
-                "total_revenue": 0.0,
-                "total_expenses": 0.0,
-                "net_income": 0.0
-            }
-        }
-        
-        # Categorize and sum transactions
+    def add_transactions(self, transactions):
         for transaction in transactions:
-            if transaction.category == 'revenue':
-                if transaction.subcategory not in result["revenue"]:
-                    result["revenue"][transaction.subcategory] = 0.0
-                result["revenue"][transaction.subcategory] += transaction.amount
-                result["summary"]["total_revenue"] += transaction.amount
-            elif transaction.category == 'expense':
-                if transaction.subcategory not in result["expenses"]:
-                    result["expenses"][transaction.subcategory] = 0.0
-                result["expenses"][transaction.subcategory] += transaction.amount
-                result["summary"]["total_expenses"] += transaction.amount
+            self.add_transaction(transaction)
+            
+    def calculate_totals(self):
+        revenue_by_category = defaultdict(float)
+        expense_by_category = defaultdict(float)
+        cost_of_sales_by_category = defaultdict(float)
         
-        # Calculate net income
-        result["summary"]["net_income"] = result["summary"]["total_revenue"] - result["summary"]["total_expenses"]
+        for transaction in self.transactions:
+            if transaction.transaction_type == 'revenue':
+                revenue_by_category[transaction.category] += transaction.amount
+            elif transaction.transaction_type == 'expense':
+                expense_by_category[transaction.category] += transaction.amount
+            elif transaction.transaction_type == 'cost_of_sales':
+                cost_of_sales_by_category[transaction.category] += transaction.amount
         
-        return result
+        # Calculate cost of sales with proper accounting format
+        purchases = sum(cost_of_sales_by_category.values())
+        total_goods_available = self.beginning_inventory + purchases
+        
+        if self.ending_inventory is None:
+            # If ending inventory not provided, use only direct cost of sales transactions
+            total_cost_of_sales = purchases
+            
+            # Create ordered cost of sales breakdown 
+            cost_of_sales_breakdown = []
+            for category, amount in cost_of_sales_by_category.items():
+                cost_of_sales_breakdown.append((category, amount))
+        else:
+            # Use beginning inventory + purchases - ending inventory formula
+            total_cost_of_sales = total_goods_available - self.ending_inventory
+            
+            # Create ordered cost of sales breakdown with proper accounting format
+            cost_of_sales_breakdown = [
+                ("Beginning Inventory", self.beginning_inventory)
+            ]
+            
+            # Add purchases as "Plus: Goods Purchased or Manufactured"
+            for category, amount in cost_of_sales_by_category.items():
+                cost_of_sales_breakdown.append((category, amount))
+                
+            # Add total goods available
+            cost_of_sales_breakdown.append(("TOTAL GOODS AVAILABLE", total_goods_available))
+            
+            # Add ending inventory as a deduction
+            cost_of_sales_breakdown.append(("Less: Ending Inventory", -self.ending_inventory))
+        
+        total_revenue = sum(revenue_by_category.values())
+        gross_profit = total_revenue - total_cost_of_sales
+        total_expenses = sum(expense_by_category.values())
+        net_income = gross_profit - total_expenses
+        
+        return {
+            'revenue_by_category': dict(revenue_by_category),
+            'cost_of_sales_breakdown': cost_of_sales_breakdown,
+            'expense_by_category': dict(expense_by_category),
+            'total_revenue': total_revenue,
+            'total_cost_of_sales': total_cost_of_sales,
+            'gross_profit': gross_profit,
+            'total_expenses': total_expenses,
+            'net_income': net_income
+        }
     
-    def print_income_statement(self, start_date=None, end_date=None) -> None:
-        """Print formatted income statement to console."""
-        statement = self.generate_income_statement(start_date, end_date)
+    def generate_statement(self):
+        totals = self.calculate_totals()
         
-        print("\n" + "="*60)
-        print(f"INCOME STATEMENT")
-        print(f"Period: {statement['period']['start_date']} to {statement['period']['end_date']}")
-        print("="*60)
+        statement = f"""
+{self.business_name}
+Income Statement
+For the period: {self.start_date.strftime('%Y-%m-%d')} to {self.end_date.strftime('%Y-%m-%d')}
+
+REVENUE:
+"""
         
-        print("\nREVENUE:")
-        for category, amount in statement['revenue'].items():
-            print(f"  {category.replace('_', ' ').title()}: ${amount:.2f}")
-        print(f"  {'='*30}")
-        print(f"  Total Revenue: ${statement['summary']['total_revenue']:.2f}")
+        for category, amount in totals['revenue_by_category'].items():
+            statement += f"{category}: ${amount:.2f}\n"
         
-        print("\nEXPENSES:")
-        for category, amount in statement['expenses'].items():
-            print(f"  {category.replace('_', ' ').title()}: ${amount:.2f}")
-        print(f"  {'='*30}")
-        print(f"  Total Expenses: ${statement['summary']['total_expenses']:.2f}")
+        statement += f"Total Revenue: ${totals['total_revenue']:.2f}\n\n"
         
-        print("\nSUMMARY:")
-        print(f"  Total Revenue: ${statement['summary']['total_revenue']:.2f}")
-        print(f"  Total Expenses: ${statement['summary']['total_expenses']:.2f}")
-        print(f"  {'='*30}")
-        print(f"  Net Income: ${statement['summary']['net_income']:.2f}")
-        print("="*60 + "\n")
+        statement += "COST OF SALES:\n"
+        for category, amount in totals['cost_of_sales_breakdown']:
+            statement += f"{category}: ${amount:.2f}\n"
+        statement += f"Total Cost of Sales: ${totals['total_cost_of_sales']:.2f}\n\n"
+        
+        statement += f"GROSS PROFIT: ${totals['gross_profit']:.2f}\n\n"
+        
+        statement += "EXPENSES:\n"
+        for category, amount in totals['expense_by_category'].items():
+            statement += f"{category}: ${amount:.2f}\n"
+        
+        statement += f"Total Expenses: ${totals['total_expenses']:.2f}\n\n"
+        statement += f"Net Income: ${totals['net_income']:.2f}\n"
+        
+        return statement
     
-    def save_to_file(self, filename: str) -> None:
-        """Save all transactions to a JSON file."""
-        with open(filename, 'w') as f:
-            json.dump([t.to_dict() for t in self.transactions], f, indent=2)
-    
-    def load_from_file(self, filename: str) -> None:
-        """Load transactions from a JSON file."""
-        with open(filename, 'r') as f:
-            data = json.load(f)
-            self.transactions = [Transaction.from_dict(t) for t in data]
-    
-    def save_to_excel(self, filename: str, start_date=None, end_date=None) -> None:
-        """
-        Save income statement to an Excel file.
-        
-        Args:
-            filename: Path to save the Excel file
-            start_date: Optional start date for the income statement period
-            end_date: Optional end date for the income statement period
-        """
-        statement = self.generate_income_statement(start_date, end_date)
-        
+    def export_to_excel(self, filename):
         # Create a new workbook and select the active worksheet
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -212,143 +136,208 @@ class IncomeStatement:
         header_font = Font(name='Arial', size=12, bold=True)
         normal_font = Font(name='Arial', size=11)
         money_font = Font(name='Arial', size=11, bold=True)
+        total_font = Font(name='Arial', size=12, bold=True)
         
-        header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
-        total_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
-        
+        # Header styling
+        header_fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
+        center_align = Alignment(horizontal='center')
+        right_align = Alignment(horizontal='right')
         thin_border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
+            left=Side(style='thin'), 
+            right=Side(style='thin'), 
+            top=Side(style='thin'), 
             bottom=Side(style='thin')
         )
         
-        # Set column widths
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 15
+        double_bottom_border = Border(
+            left=Side(style='thin'), 
+            right=Side(style='thin'), 
+            top=Side(style='thin'), 
+            bottom=Side(style='double')
+        )
         
-        # Title and period
-        ws['A1'] = "INCOME STATEMENT"
+        # Helper function to apply border to a range
+        def apply_border_to_range(ws, cell_range, border_style):
+            start_cell, end_cell = cell_range.split(':')
+            start_col, start_row = openpyxl.utils.cell.coordinate_from_string(start_cell)
+            end_col, end_row = openpyxl.utils.cell.coordinate_from_string(end_cell)
+            
+            start_col_idx = openpyxl.utils.column_index_from_string(start_col)
+            end_col_idx = openpyxl.utils.column_index_from_string(end_col)
+            
+            for col in range(start_col_idx, end_col_idx + 1):
+                cell = ws.cell(row=int(start_row), column=col)
+                cell.border = border_style
+        
+        # Add company name and report title
+        ws['A1'] = self.business_name
         ws['A1'].font = title_font
-        ws.merge_cells('A1:B1')
-        ws['A1'].alignment = Alignment(horizontal='center')
+        ws.merge_cells('A1:E1')
+        ws['A1'].alignment = center_align
         
-        period_text = f"Period: {statement['period']['start_date']} to {statement['period']['end_date']}"
-        ws['A2'] = period_text
-        ws['A2'].font = normal_font
-        ws.merge_cells('A2:B2')
-        ws['A2'].alignment = Alignment(horizontal='center')
+        ws['A2'] = f"Income Statement"
+        ws['A2'].font = header_font
+        ws.merge_cells('A2:E2')
+        ws['A2'].alignment = center_align
         
-        # Revenue section
-        current_row = 4
-        ws[f'A{current_row}'] = "REVENUE"
-        ws[f'A{current_row}'].font = header_font
-        ws[f'A{current_row}'].fill = header_fill
-        ws.merge_cells(f'A{current_row}:B{current_row}')
+        ws['A3'] = f"For the period: {self.start_date.strftime('%Y-%m-%d')} to {self.end_date.strftime('%Y-%m-%d')}"
+        ws['A3'].font = normal_font
+        ws.merge_cells('A3:E3')
+        ws['A3'].alignment = center_align
         
-        current_row += 1
-        for category, amount in statement['revenue'].items():
-            ws[f'A{current_row}'] = category.replace('_', ' ').title()
-            ws[f'B{current_row}'] = amount
-            ws[f'B{current_row}'].number_format = '$#,##0.00'
-            ws[f'A{current_row}'].font = normal_font
-            ws[f'B{current_row}'].font = normal_font
-            current_row += 1
+        # Calculate totals
+        totals = self.calculate_totals()
+        
+        # Start row for data
+        row = 5
+        
+        # REVENUE SECTION
+        ws[f'A{row}'] = "REVENUE"
+        ws[f'A{row}'].font = header_font
+        ws.merge_cells(f'A{row}:E{row}')
+        ws[f'A{row}'].fill = header_fill
+        row += 1
+        
+        # Revenue items
+        for category, amount in totals['revenue_by_category'].items():
+            ws[f'B{row}'] = category
+            ws[f'D{row}'] = amount
+            ws[f'D{row}'].number_format = '$#,##0.00'
+            row += 1
         
         # Total Revenue
-        ws[f'A{current_row}'] = "Total Revenue"
-        ws[f'B{current_row}'] = statement['summary']['total_revenue']
-        ws[f'A{current_row}'].font = money_font
-        ws[f'B{current_row}'].font = money_font
-        ws[f'B{current_row}'].number_format = '$#,##0.00'
-        ws[f'A{current_row}'].fill = total_fill
-        ws[f'B{current_row}'].fill = total_fill
+        ws[f'C{row}'] = "Total Revenue"
+        ws[f'C{row}'].font = money_font
+        ws[f'D{row}'] = totals['total_revenue']
+        ws[f'D{row}'].font = money_font
+        ws[f'D{row}'].number_format = '$#,##0.00'
+        apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
+        row += 2
         
-        # Expenses section
-        current_row += 2
-        ws[f'A{current_row}'] = "EXPENSES"
-        ws[f'A{current_row}'].font = header_font
-        ws[f'A{current_row}'].fill = header_fill
-        ws.merge_cells(f'A{current_row}:B{current_row}')
+        # COST OF SALES SECTION
+        ws[f'A{row}'] = "COST OF SALES"
+        ws[f'A{row}'].font = header_font
+        ws.merge_cells(f'A{row}:E{row}')
+        ws[f'A{row}'].fill = header_fill
+        row += 1
         
-        current_row += 1
-        for category, amount in statement['expenses'].items():
-            ws[f'A{current_row}'] = category.replace('_', ' ').title()
-            ws[f'B{current_row}'] = amount
-            ws[f'B{current_row}'].number_format = '$#,##0.00'
-            ws[f'A{current_row}'].font = normal_font
-            ws[f'B{current_row}'].font = normal_font
-            current_row += 1
+        # Cost of Sales items
+        for category, amount in totals['cost_of_sales_breakdown']:
+            # Make "TOTAL GOODS AVAILABLE" stand out
+            if category == "TOTAL GOODS AVAILABLE":
+                ws[f'B{row}'] = category
+                ws[f'B{row}'].font = money_font
+                ws[f'D{row}'] = amount
+                ws[f'D{row}'].font = money_font
+                ws[f'D{row}'].number_format = '$#,##0.00'
+                apply_border_to_range(ws, f'B{row}:D{row}', thin_border)
+            else:
+                ws[f'B{row}'] = category
+                ws[f'D{row}'] = amount
+                ws[f'D{row}'].number_format = '$#,##0.00'
+            row += 1
+        
+        # Total Cost of Sales
+        ws[f'C{row}'] = "Total Cost of Sales"
+        ws[f'C{row}'].font = money_font
+        ws[f'D{row}'] = totals['total_cost_of_sales']
+        ws[f'D{row}'].font = money_font
+        ws[f'D{row}'].number_format = '$#,##0.00'
+        apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
+        row += 2
+        
+        # GROSS PROFIT
+        ws[f'C{row}'] = "GROSS PROFIT"
+        ws[f'C{row}'].font = total_font
+        ws[f'D{row}'] = totals['gross_profit']
+        ws[f'D{row}'].font = total_font
+        ws[f'D{row}'].number_format = '$#,##0.00'
+        apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
+        row += 2
+        
+        # EXPENSES SECTION
+        ws[f'A{row}'] = "EXPENSES"
+        ws[f'A{row}'].font = header_font
+        ws.merge_cells(f'A{row}:E{row}')
+        ws[f'A{row}'].fill = header_fill
+        row += 1
+        
+        # Expense items
+        for category, amount in totals['expense_by_category'].items():
+            ws[f'B{row}'] = category
+            ws[f'D{row}'] = amount
+            ws[f'D{row}'].number_format = '$#,##0.00'
+            row += 1
         
         # Total Expenses
-        ws[f'A{current_row}'] = "Total Expenses"
-        ws[f'B{current_row}'] = statement['summary']['total_expenses']
-        ws[f'A{current_row}'].font = money_font
-        ws[f'B{current_row}'].font = money_font
-        ws[f'B{current_row}'].number_format = '$#,##0.00'
-        ws[f'A{current_row}'].fill = total_fill
-        ws[f'B{current_row}'].fill = total_fill
+        ws[f'C{row}'] = "Total Expenses"
+        ws[f'C{row}'].font = money_font
+        ws[f'D{row}'] = totals['total_expenses']
+        ws[f'D{row}'].font = money_font
+        ws[f'D{row}'].number_format = '$#,##0.00'
+        apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
+        row += 2
         
-        # Summary section
-        current_row += 2
-        ws[f'A{current_row}'] = "SUMMARY"
-        ws[f'A{current_row}'].font = header_font
-        ws[f'A{current_row}'].fill = header_fill
-        ws.merge_cells(f'A{current_row}:B{current_row}')
+        # NET INCOME
+        ws[f'C{row}'] = "NET INCOME"
+        ws[f'C{row}'].font = total_font
+        ws[f'D{row}'] = totals['net_income']
+        ws[f'D{row}'].font = total_font
+        ws[f'D{row}'].number_format = '$#,##0.00'
         
-        current_row += 1
-        ws[f'A{current_row}'] = "Total Revenue"
-        ws[f'B{current_row}'] = statement['summary']['total_revenue']
-        ws[f'B{current_row}'].number_format = '$#,##0.00'
-        ws[f'A{current_row}'].font = normal_font
-        ws[f'B{current_row}'].font = normal_font
+        # Apply borders and format to all used cells
+        for row_cells in ws.iter_rows(min_row=1, max_row=row, min_col=1, max_col=5):
+            for cell in row_cells:
+                if not cell.border:
+                    cell.border = thin_border
         
-        current_row += 1
-        ws[f'A{current_row}'] = "Total Expenses"
-        ws[f'B{current_row}'] = statement['summary']['total_expenses']
-        ws[f'B{current_row}'].number_format = '$#,##0.00'
-        ws[f'A{current_row}'].font = normal_font
-        ws[f'B{current_row}'].font = normal_font
+        # Adjust column widths
+        ws.column_dimensions['A'].width = 5
+        ws.column_dimensions['B'].width = 25
+        ws.column_dimensions['C'].width = 20
+        ws.column_dimensions['D'].width = 15
+        ws.column_dimensions['E'].width = 5
         
-        current_row += 1
-        ws[f'A{current_row}'] = "Net Income"
-        ws[f'B{current_row}'] = statement['summary']['net_income']
-        ws[f'A{current_row}'].font = money_font
-        ws[f'B{current_row}'].font = money_font
-        ws[f'B{current_row}'].number_format = '$#,##0.00'
-        ws[f'A{current_row}'].fill = total_fill
-        ws[f'B{current_row}'].fill = total_fill
-        
-        # Add borders to all cells with content
-        for row in ws.iter_rows(min_row=1, max_row=current_row, min_col=1, max_col=2):
-            for cell in row:
-                cell.border = thin_border
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         
         # Save the workbook
         wb.save(filename)
+        return filename
 
+def main():
+    # Create sample transactions
+    income_statement = IncomeStatement("Sample Business LLC", "2023-01-01", "2023-03-31", beginning_inventory=2000.00)
+    sample_transactions = [
+        Transaction("2023-01-05", "Product Sale - Customer A", 1500.00, "Sales", "revenue"),
+        Transaction("2023-01-12", "Consulting Service", 2500.00, "Services", "revenue"),
+        Transaction("2023-01-08", "Raw Materials Purchase", 700.00, "Plus goods purchased or manufactured", "cost_of_sales"),
+        Transaction("2023-01-10", "Inventory Purchase", 900.00, "Plus goods purchased or manufactured", "cost_of_sales"),
+        Transaction("2023-01-15", "Office Rent", 800.00, "Rent", "expense"),
+        Transaction("2023-01-20", "Product Sale - Customer B", 1200.00, "Sales", "revenue"),
+        Transaction("2023-01-22", "Utilities", 150.00, "Utilities", "expense"),
+        Transaction("2023-01-25", "Salaries", 3000.00, "Payroll", "expense"),
+        Transaction("2023-02-05", "Product Sale - Customer C", 1800.00, "Sales", "revenue"),
+        Transaction("2023-02-08", "Manufacturing Labor", 600.00, "Plus goods purchased or manufactured", "cost_of_sales"),
+        Transaction("2023-02-10", "Marketing Campaign", 500.00, "Marketing", "expense"),
+        Transaction("2023-02-15", "Office Supplies", 200.00, "Supplies", "expense"),
+        Transaction("2023-02-20", "Online Course Sales", 3500.00, "Services", "revenue"),
+        Transaction("2023-02-28", "Equipment Purchase", 1200.00, "Equipment", "expense"),
+    ]
+    
+    # Create output directory if it doesn't exist
+    os.makedirs("output", exist_ok=True)
+    
+    # Create a single income statement for Q1 2023
+    income_statement.set_ending_inventory(1500.00)
+    income_statement.add_transactions(sample_transactions)
+    
+    # Print the statement to console
+    print(income_statement.generate_statement())
+    
+    # Export to Excel
+    excel_file = income_statement.export_to_excel("output/income_statement.xlsx")
+    print(f"Income statement exported to: {excel_file}")
 
-# Example usage
 if __name__ == "__main__":
-    # Create income statement
-    income_stmt = IncomeStatement()
-    
-    # Add sample transactions
-    income_stmt.add_transaction("2023-01-15", "Product sales", 5000.00, "revenue", "sales")
-    income_stmt.add_transaction("2023-01-20", "Consulting services", 2500.00, "revenue", "service_revenue")
-    income_stmt.add_transaction("2023-01-20", "Consulting services", 2500.00, "revenue", "service_revenue")
-    income_stmt.add_transaction("2023-01-20", "Consulting services", 2500.00, "revenue", "other_revenue")
-    income_stmt.add_transaction("2023-01-22", "Office rent", 1200.00, "expense", "rent")
-    income_stmt.add_transaction("2023-01-25", "Utility bills", 350.00, "expense", "utilities")
-    income_stmt.add_transaction("2023-01-30", "Employee salaries", 3500.00, "expense", "salaries")
-    
-    # Print income statement
-    income_stmt.print_income_statement()
-    
-    # Save transactions to JSON file
-    income_stmt.save_to_file(r"C:\Users\shaff\OneDrive\Desktop\Autobooks_AI\transactions.json")
-    
-    # Save income statement to Excel file
-    income_stmt.save_to_excel(r"C:\Users\shaff\OneDrive\Desktop\Autobooks_AI\income_statement.xlsx")
-    
-    print("Income statement generated successfully!")
+    main()
