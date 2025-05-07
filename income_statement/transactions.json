@@ -1,0 +1,114 @@
+[
+  {
+    "date": "2023-01-15",
+    "description": "Product sales",
+    "amount": 5000.0,
+    "category": "revenue",
+    "subcategory": "sales"
+  },
+  {
+    "date": "2023-01-20",
+    "description": "Consulting services",
+    "amount": 2500.0,
+    "category": "revenue",
+    "subcategory": "service_revenue"
+  },
+  {
+    "date": "2023-01-20",
+    "description": "Training workshop",
+    "amount": 1800.0,
+    "category": "revenue",
+    "subcategory": "service_revenue"
+  },
+  {
+    "date": "2023-01-25",
+    "description": "Interest on deposits",
+    "amount": 150.0,
+    "category": "revenue",
+    "subcategory": "interest_income"
+  },
+  {
+    "date": "2023-01-30",
+    "description": "Office space sublease",
+    "amount": 800.0,
+    "category": "revenue",
+    "subcategory": "rental_income"
+  },
+  {
+    "date": "2023-01-10",
+    "description": "Raw materials",
+    "amount": 1200.0,
+    "category": "cost_of_sales",
+    "subcategory": "direct_materials"
+  },
+  {
+    "date": "2023-01-18",
+    "description": "Production staff wages",
+    "amount": 1800.0,
+    "category": "cost_of_sales",
+    "subcategory": "direct_labor"
+  },
+  {
+    "date": "2023-01-22",
+    "description": "Factory utilities",
+    "amount": 350.0,
+    "category": "cost_of_sales",
+    "subcategory": "manufacturing_overhead"
+  },
+  {
+    "date": "2023-01-05",
+    "description": "Shipping of materials",
+    "amount": 180.0,
+    "category": "cost_of_sales",
+    "subcategory": "freight_in"
+  },
+  {
+    "date": "2023-01-22",
+    "description": "Office rent",
+    "amount": 1200.0,
+    "category": "expense",
+    "subcategory": "rent"
+  },
+  {
+    "date": "2023-01-25",
+    "description": "Office utilities",
+    "amount": 220.0,
+    "category": "expense",
+    "subcategory": "utilities"
+  },
+  {
+    "date": "2023-01-30",
+    "description": "Administrative salaries",
+    "amount": 2500.0,
+    "category": "expense",
+    "subcategory": "salaries"
+  },
+  {
+    "date": "2023-01-12",
+    "description": "Marketing campaign",
+    "amount": 800.0,
+    "category": "expense",
+    "subcategory": "marketing"
+  },
+  {
+    "date": "2023-01-15",
+    "description": "Office supplies",
+    "amount": 150.0,
+    "category": "expense",
+    "subcategory": "office_supplies"
+  },
+  {
+    "date": "2023-01-28",
+    "description": "Loan interest",
+    "amount": 300.0,
+    "category": "expense",
+    "subcategory": "interest_expense"
+  },
+  {
+    "date": "2023-01-31",
+    "description": "Income tax provision",
+    "amount": 450.0,
+    "category": "expense",
+    "subcategory": "taxes"
+  }
+]
