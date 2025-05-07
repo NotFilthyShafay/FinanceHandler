@@ -1,0 +1,51 @@
+[
+  {
+    "date": "2023-01-15",
+    "description": "Product sales",
+    "amount": 5000.0,
+    "category": "revenue",
+    "subcategory": "sales"
+  },
+  {
+    "date": "2023-01-20",
+    "description": "Consulting services",
+    "amount": 2500.0,
+    "category": "revenue",
+    "subcategory": "service_revenue"
+  },
+  {
+    "date": "2023-01-20",
+    "description": "Consulting services",
+    "amount": 2500.0,
+    "category": "revenue",
+    "subcategory": "service_revenue"
+  },
+  {
+    "date": "2023-01-20",
+    "description": "Consulting services",
+    "amount": 2500.0,
+    "category": "revenue",
+    "subcategory": "other_revenue"
+  },
+  {
+    "date": "2023-01-22",
+    "description": "Office rent",
+    "amount": 1200.0,
+    "category": "expense",
+    "subcategory": "rent"
+  },
+  {
+    "date": "2023-01-25",
+    "description": "Utility bills",
+    "amount": 350.0,
+    "category": "expense",
+    "subcategory": "utilities"
+  },
+  {
+    "date": "2023-01-30",
+    "description": "Employee salaries",
+    "amount": 3500.0,
+    "category": "expense",
+    "subcategory": "salaries"
+  }
+]
