@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accounting Agent</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <h1>Accounting Agent</h1>
+  <div id="file-list">
+    <h3>Uploaded Files:</h3>
+    <ul id="files"></ul>
+  </div>
+  <div id="chat-box"></div>
+  
+  <!-- Text Input Container -->
+  <div class="input-container" id="text-input-container">
+    <input type="file" id="upload-files" multiple />
+    <input type="text" id="message" disabled placeholder="Type a message..." onkeydown="handleKeyDown(event)" />
+    <button onclick="sendMessage()" id="sendbtn" disabled>Send</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
