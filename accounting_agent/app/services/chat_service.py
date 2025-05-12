@@ -9,55 +9,17 @@ import sys
 import os
 from typing import Dict, Any
 
-# Add this import (after creating the file)
-from app.services.income_statement_service import process_income_statement_request
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def is_income_statement_request(message: str) -> bool:
-    """Check if the message is requesting an income statement update."""
-    keywords = ["income statement", "profit and loss", "p&l", "financial statement"]
-    transaction_indicators = ["transaction", "sold", "purchased", "paid", "received", "$"]
-    
-    return (any(keyword in message.lower() for keyword in keywords) and 
-            any(indicator in message.lower() for indicator in transaction_indicators))
 
 async def chat_stream(data: str, conversation_id: str = "accountant", file_messages: list = []):
     """Handles streaming chat responses from LangChain."""
 
     logger.info(f"Processing chat message for conversation: {conversation_id}")
     
-    # Check if message is an income statement request
-    if is_income_statement_request(data):
-        logger.info("Processing income statement request")
-        try:
-            # Process income statement request
-            result = process_income_statement_request(data, conversation_id)
-            
-            if result['success']:
-                response = {
-                    "role": "assistant",
-                    "message": f"I've updated the income statement for {result['business_name']} covering {result['date_range']}.\n\n{result['statement']}",
-                    "conversation_id": conversation_id,
-                    "income_statement_data": result
-                }
-                yield json.dumps(response) + "\n"
-            else:
-                response = {
-                    "role": "assistant",
-                    "message": f"I couldn't process the income statement request: {result['error']}",
-                    "conversation_id": conversation_id
-                }
-                yield json.dumps(response) + "\n"
-            
-            logger.info("Income statement processing completed")
-            return
-        except Exception as e:
-            logger.error(f"Error in income statement processing: {e}", exc_info=True)
-            # Fall back to regular chat processing if income statement fails
     
     # Continue with regular chat processing
     # Check if message contains stress data from a video response
