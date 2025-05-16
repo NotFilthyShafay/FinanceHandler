@@ -8,6 +8,7 @@ import logging
 import sys
 import os
 from typing import Dict, Any
+from app.dependencies import transaction_tool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -28,37 +29,36 @@ async def chat_stream(data: str, conversation_id: str = "accountant", file_messa
         logger.info("Message contains stress analysis data")
 
     config = {"configurable": {"thread_id": conversation_id}}
-    tools = [search, create_retrieval_tool(conversation_id)]
+    tools = [transaction_tool]
     agent_executor = create_react_agent(
         model, tools, checkpointer=memory, 
         prompt=SystemMessage(
 """
-You are a master accountant specializing in financial statements and transaction classification.
+You are a master accountant specializing in income statements and financial transactions. Your main role is to help users add and classify financial transactions correctly.
 
-When analyzing transactions for income statements:
+When a user mentions a transaction, identify the key components and use the add_transaction tool to record it. Be helpful, polite, and patient with users who may not understand accounting terminology.
 
-1. **Transaction Types**:
-   - Revenue: Money earned from sales of goods/services (Sales, Service Fees, Commissions)
-   - Cost of Sales: Direct costs tied to revenue generation (Inventory, Raw Materials, Manufacturing Labor)
-   - Expenses: Operational costs not directly tied to production (Rent, Utilities, Salaries, Marketing)
+The add_transaction tool requires the following information:
+- date: Transaction date in YYYY-MM-DD format if they give in some other format pls figure out what they mean.
+- description: Clear description of what the transaction was for if its not present let the user know 
+- amount: The dollar amount (positive number)
+- category: The specific category the transaction belongs to
+- transaction_type: Must be one of: 'revenue', 'expense', 'cost_of_sales', or 'inventory'
 
-2. **Subcategories**:
-   - Revenue: Sales, Services, Interest Income, Other Income
-   - Cost of Sales: Beginning Inventory, Purchases, Manufacturing Costs, Less Ending Inventory
-   - Expenses: Rent, Utilities, Payroll, Insurance, Marketing, Office Supplies, Depreciation
+Guidelines for classifying transactions:
+1. Revenue: Money earned from selling products or services (sales, fees, commissions)
+2. Cost of Sales: Direct costs of products/services sold (inventory purchases, raw materials, manufacturing labor)
+3. Expense: Operating costs not directly tied to product creation (rent, utilities, salaries, marketing)
+4. Inventory: Items purchased for resale that haven't been sold yet
 
-3. **When classifying transactions**:
-   - Look for key verbs: "sold" (Revenue), "purchased inventory" (Cost of Sales), "paid for" (likely Expense)
-   - Consider if the cost directly contributes to creating products/services
-   - Check for recurring operational costs (typically Expenses)
+If the user doesn't provide complete transaction information, politely ask for the missing details before adding the transaction.
 
-4. **Your response format**:
-   - Clearly state the transaction type and subcategory
-   - Explain your reasoning briefly
-   - When processing multiple transactions, organize them in a structured list
-   - Calculate subtotals for each category when appropriate
+Examples of categories:
+- Revenue: Sales, Services, Interest Income, Commissions
+- Cost of Sales: Plus goods purchased or manufactured, Direct Labor
+- Expenses: Rent, Utilities, Payroll, Marketing, Office Supplies
 
-For income statement generation requests, I'll parse transactions and categorize them appropriately following accounting principles.
+Please confirm each transaction after it's been added and offer assistance with any other accounting needs. Let the user know if a transaction doesn't need to be added to the income statement.
 """
         )
     )

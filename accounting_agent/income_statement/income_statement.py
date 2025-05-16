@@ -105,23 +105,23 @@ REVENUE:
 """
         
         for category, amount in totals['revenue_by_category'].items():
-            statement += f"{category}: ${amount:.2f}\n"
+            statement += f"{category}: Rs.{amount:.2f}\n"
         
-        statement += f"Total Revenue: ${totals['total_revenue']:.2f}\n\n"
+        statement += f"Total Revenue: Rs.{totals['total_revenue']:.2f}\n\n"
         
         statement += "COST OF SALES:\n"
         for category, amount in totals['cost_of_sales_breakdown']:
-            statement += f"{category}: ${amount:.2f}\n"
-        statement += f"Total Cost of Sales: ${totals['total_cost_of_sales']:.2f}\n\n"
+            statement += f"{category}: Rs.{amount:.2f}\n"
+        statement += f"Total Cost of Sales: Rs.{totals['total_cost_of_sales']:.2f}\n\n"
         
-        statement += f"GROSS PROFIT: ${totals['gross_profit']:.2f}\n\n"
+        statement += f"GROSS PROFIT: Rs.{totals['gross_profit']:.2f}\n\n"
         
         statement += "EXPENSES:\n"
         for category, amount in totals['expense_by_category'].items():
-            statement += f"{category}: ${amount:.2f}\n"
+            statement += f"{category}: Rs.{amount:.2f}\n"
         
-        statement += f"Total Expenses: ${totals['total_expenses']:.2f}\n\n"
-        statement += f"Net Income: ${totals['net_income']:.2f}\n"
+        statement += f"Total Expenses: Rs.{totals['total_expenses']:.2f}\n\n"
+        statement += f"Net Income: Rs.{totals['net_income']:.2f}\n"
         
         return statement
     
@@ -202,7 +202,7 @@ REVENUE:
         for category, amount in totals['revenue_by_category'].items():
             ws[f'B{row}'] = category
             ws[f'D{row}'] = amount
-            ws[f'D{row}'].number_format = '$#,##0.00'
+            ws[f'D{row}'].number_format = 'Rs.#,##0.00'
             row += 1
         
         # Total Revenue
@@ -210,7 +210,7 @@ REVENUE:
         ws[f'C{row}'].font = money_font
         ws[f'D{row}'] = totals['total_revenue']
         ws[f'D{row}'].font = money_font
-        ws[f'D{row}'].number_format = '$#,##0.00'
+        ws[f'D{row}'].number_format = 'Rs.#,##0.00'
         apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
         row += 2
         
@@ -229,12 +229,12 @@ REVENUE:
                 ws[f'B{row}'].font = money_font
                 ws[f'D{row}'] = amount
                 ws[f'D{row}'].font = money_font
-                ws[f'D{row}'].number_format = '$#,##0.00'
+                ws[f'D{row}'].number_format = 'Rs.#,##0.00'
                 apply_border_to_range(ws, f'B{row}:D{row}', thin_border)
             else:
                 ws[f'B{row}'] = category
                 ws[f'D{row}'] = amount
-                ws[f'D{row}'].number_format = '$#,##0.00'
+                ws[f'D{row}'].number_format = 'Rs.#,##0.00'
             row += 1
         
         # Total Cost of Sales
@@ -242,7 +242,7 @@ REVENUE:
         ws[f'C{row}'].font = money_font
         ws[f'D{row}'] = totals['total_cost_of_sales']
         ws[f'D{row}'].font = money_font
-        ws[f'D{row}'].number_format = '$#,##0.00'
+        ws[f'D{row}'].number_format = 'Rs.#,##0.00'
         apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
         row += 2
         
@@ -251,7 +251,7 @@ REVENUE:
         ws[f'C{row}'].font = total_font
         ws[f'D{row}'] = totals['gross_profit']
         ws[f'D{row}'].font = total_font
-        ws[f'D{row}'].number_format = '$#,##0.00'
+        ws[f'D{row}'].number_format = 'Rs.#,##0.00'
         apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
         row += 2
         
@@ -266,7 +266,7 @@ REVENUE:
         for category, amount in totals['expense_by_category'].items():
             ws[f'B{row}'] = category
             ws[f'D{row}'] = amount
-            ws[f'D{row}'].number_format = '$#,##0.00'
+            ws[f'D{row}'].number_format = 'Rs.#,##0.00'
             row += 1
         
         # Total Expenses
@@ -274,7 +274,7 @@ REVENUE:
         ws[f'C{row}'].font = money_font
         ws[f'D{row}'] = totals['total_expenses']
         ws[f'D{row}'].font = money_font
-        ws[f'D{row}'].number_format = '$#,##0.00'
+        ws[f'D{row}'].number_format = 'Rs.#,##0.00'
         apply_border_to_range(ws, f'A{row}:E{row}', double_bottom_border)
         row += 2
         
@@ -283,7 +283,7 @@ REVENUE:
         ws[f'C{row}'].font = total_font
         ws[f'D{row}'] = totals['net_income']
         ws[f'D{row}'].font = total_font
-        ws[f'D{row}'].number_format = '$#,##0.00'
+        ws[f'D{row}'].number_format = 'Rs.#,##0.00'
         
         # Apply borders and format to all used cells
         for row_cells in ws.iter_rows(min_row=1, max_row=row, min_col=1, max_col=5):
@@ -323,6 +323,7 @@ def main():
         Transaction("2023-02-15", "Office Supplies", 200.00, "Supplies", "expense"),
         Transaction("2023-02-20", "Online Course Sales", 3500.00, "Services", "revenue"),
         Transaction("2023-02-28", "Equipment Purchase", 1200.00, "Equipment", "expense"),
+        Transaction("2023-01-05", "Product Sale - Customer A", 1500.00, "Sales", "revenue"),
     ]
     
     # Create output directory if it doesn't exist
